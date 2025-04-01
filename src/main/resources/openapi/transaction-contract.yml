@@ -1,0 +1,213 @@
+openapi: 3.0.3
+info:
+  title: Transaction Service API
+  description: |
+    API para consulta de transacciones bancarias.
+    Centraliza el registro de todas las transacciones del sistema.
+  version: 1.0.0
+
+servers:
+  - url: https://api.bank.com/transaction-service/v1
+    description: Servidor de producción
+  - url: http://localhost:8084/api/v1
+    description: Servidor local de desarrollo
+
+tags:
+  - name: Transactions
+    description: Consulta de transacciones
+
+paths:
+  /transactions/product/{productId}:
+    get:
+      tags: [Transactions]
+      summary: Obtener transacciones por producto
+      description: |
+        Retorna las transacciones de un producto específico (cuenta o crédito).
+        Ordenadas por fecha descendente.
+      parameters:
+        - $ref: '#/components/parameters/productIdParam'
+        - $ref: '#/components/parameters/pageParam'
+        - $ref: '#/components/parameters/sizeParam'
+        - name: productType
+          in: query
+          description: Tipo de producto (ACCOUNT o CREDIT)
+          required: true
+          schema:
+            type: string
+            enum: [ACCOUNT, CREDIT]
+        - name: startDate
+          in: query
+          description: Fecha de inicio para filtrar (opcional)
+          schema:
+            type: string
+            format: date-time
+        - name: endDate
+          in: query
+          description: Fecha de fin para filtrar (opcional)
+          schema:
+            type: string
+            format: date-time
+      responses:
+        '200':
+          description: Lista de transacciones del producto
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TransactionPage'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /transactions/customer/{customerId}:
+    get:
+      tags: [Transactions]
+      summary: Obtener transacciones por cliente
+      description: |
+        Retorna todas las transacciones de los productos del cliente.
+        Ordenadas por fecha descendente.
+      parameters:
+        - $ref: '#/components/parameters/customerIdParam'
+        - $ref: '#/components/parameters/pageParam'
+        - $ref: '#/components/parameters/sizeParam'
+        - name: startDate
+          in: query
+          description: Fecha de inicio para filtrar (opcional)
+          schema:
+            type: string
+            format: date-time
+        - name: endDate
+          in: query
+          description: Fecha de fin para filtrar (opcional)
+          schema:
+            type: string
+            format: date-time
+        - name: productType
+          in: query
+          description: Tipo de producto para filtrar (opcional)
+          schema:
+            type: string
+            enum: [ACCOUNT, CREDIT]
+        - name: transactionType
+          in: query
+          description: Tipo de transacción para filtrar (opcional)
+          schema:
+            type: string
+            enum: [DEPOSIT, WITHDRAWAL, PAYMENT, CHARGE, TRANSFER, FEE]
+      responses:
+        '200':
+          description: Lista de transacciones del cliente
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TransactionPage'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+components:
+  schemas:
+    Transaction:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        productId:
+          type: string
+          format: uuid
+        productType:
+          type: string
+          enum: [ACCOUNT, CREDIT]
+        type:
+          type: string
+          enum: [DEPOSIT, WITHDRAWAL, PAYMENT, CHARGE, TRANSFER, FEE]
+        amount:
+          type: number
+          format: double
+          example: 500.00
+        fee:
+          type: number
+          format: double
+          example: 0.00
+        currency:
+          type: string
+          example: "PEN"
+        date:
+          type: string
+          format: date-time
+          readOnly: true
+        description:
+          type: string
+          example: "Depósito en efectivo"
+        reference:
+          type: string
+          example: "DEP-20230301-001"
+        channel:
+          type: string
+          enum: [BRANCH, ATM, MOBILE_APP, WEB, POS]
+          example: "BRANCH"
+        status:
+          type: string
+          enum: [COMPLETED, PENDING, REVERSED, FAILED]
+          example: "COMPLETED"
+
+    TransactionPage:
+      type: object
+      properties:
+        content:
+          type: array
+          items:
+            $ref: '#/components/schemas/Transaction'
+        page:
+          type: integer
+          example: 0
+        size:
+          type: integer
+          example: 20
+        totalElements:
+          type: integer
+          example: 100
+        totalPages:
+          type: integer
+          example: 5
+
+  parameters:
+    productIdParam:
+      name: productId
+      in: path
+      required: true
+      description: ID único del producto (cuenta o crédito)
+      schema:
+        type: string
+        format: uuid
+        example: "7c9e6679-7425-40de-944b-e07fc1f90ae7"
+    customerIdParam:
+      name: customerId
+      in: path
+      required: true
+      schema:
+        type: string
+    pageParam:
+      name: page
+      in: query
+      required: false
+      schema:
+        type: integer
+    sizeParam:
+      name: size
+      in: query
+      required: false
+      schema:
+        type: integer
+
+  responses:
+    BadRequest:
+      description: |
+        Solicitud inválida. Posibles causas:
+        - Fechas inválidas
+        - Parámetros de filtrado incorrectos
+    NotFound:
+      description: Recurso no encontrado
