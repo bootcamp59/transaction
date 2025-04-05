@@ -1,5 +1,6 @@
 package com.bootcamp.transaction.model;
 
+import com.bootcamp.transaction.enums.TransactionType;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
@@ -37,7 +38,4 @@ public class Transaction {
     @NotBlank(message = "Customer ID is required")
     private String customerId;
 
-    public enum TransactionType {
-        DEPOSIT, RETIRO, PAYMENT, CONSUMPTION
-    }
 }
