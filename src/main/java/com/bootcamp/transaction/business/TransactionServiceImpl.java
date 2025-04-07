@@ -5,6 +5,7 @@ import com.bootcamp.transaction.enums.TransactionType;
 import com.bootcamp.transaction.model.Transaction;
 import com.bootcamp.transaction.repository.TransactionRepository;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.stereotype.Service;
@@ -17,6 +18,7 @@ import java.time.LocalDateTime;
 import java.util.HashMap;
 import java.util.Map;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class TransactionServiceImpl {
@@ -38,6 +40,7 @@ public class TransactionServiceImpl {
 
     public Mono<Transaction> create(Transaction transaction) {
         transaction.setTransactionDate(LocalDateTime.now());
+        log.info("Intentando registrar transacion {}", transaction);
         return transactionRepository.save(transaction)
             .flatMap(item -> {
                 if(item.getType() == TransactionType.RETIRO ){
@@ -90,9 +93,11 @@ public class TransactionServiceImpl {
     }
 
     public Mono<Map<String, Object>> getProductMovements(String customerId, String productId) {
+        log.info("buscando movimientos del cliente {} con el producto {}",  customerId, productId);
         var urlAccount = "http://localhost:8086/api/v1/account/" + productId + "/customer/" + customerId;
         var urlCredit = "http://localhost:8087/api/v1/credit/" + productId + "/customer/" + customerId;
 
+        log.info("peticion hacia {}", urlAccount);
         Mono<Boolean> isCuenta = webClientBuilder.build()
                 .get()
                 .uri(urlAccount)
@@ -101,6 +106,7 @@ public class TransactionServiceImpl {
                 .doOnNext(f -> System.out.println("¿Es cuenta?: " + f))
                 .onErrorReturn(false);
 
+        log.info("peticion hacia {}", urlAccount);
         Mono<Boolean> isCredito = webClientBuilder.build()
                 .get()
                 .uri(urlCredit)
