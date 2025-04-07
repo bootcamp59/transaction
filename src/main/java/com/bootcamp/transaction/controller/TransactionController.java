@@ -41,7 +41,7 @@ public class TransactionController {
     }
 
     @GetMapping("/customer/{customerId}/product/{productId}")
-    public Mono<Map<String, Object>> findByCustomerId(@PathVariable String customerId, @PathVariable String productId){
+    public Mono<Map<String, Object>> findByProductIdAndCustomer(@PathVariable String customerId, @PathVariable String productId) {
         return transactionService.getProductMovements(customerId, productId);
     }
 

@@ -90,37 +90,48 @@ public class TransactionServiceImpl {
     }
 
     public Mono<Map<String, Object>> getProductMovements(String customerId, String productId) {
-        // Verifica si el producto pertenece al cliente: puede ser cuenta o crédito
+        var urlAccount = "http://localhost:8086/api/v1/account/" + productId + "/customer/" + customerId;
+        var urlCredit = "http://localhost:8087/api/v1/credit/" + productId + "/customer/" + customerId;
+
         Mono<Boolean> isCuenta = webClientBuilder.build()
                 .get()
-                .uri("http://localhost:8086/api/v1/account/" + productId + "/customer/" + customerId)
+                .uri(urlAccount)
                 .retrieve()
                 .bodyToMono(Boolean.class)
+                .doOnNext(f -> System.out.println("¿Es cuenta?: " + f))
                 .onErrorReturn(false);
 
         Mono<Boolean> isCredito = webClientBuilder.build()
                 .get()
-                .uri("http://localhost:8087/api/v1/credit/" + productId + "/customer/" + customerId)
+                .uri(urlCredit)
                 .retrieve()
                 .bodyToMono(Boolean.class)
+                .doOnNext(f -> System.out.println("¿Es crédito?: " + f))
                 .onErrorReturn(false);
 
-        Flux<Transaction> movimientos = transactionRepository.findByProductId(productId);
-
         return Mono.zip(isCuenta, isCredito)
+                .doOnNext(t -> System.out.println("Resultado de zip: cuenta=" + t.getT1() + ", credito=" + t.getT2()))
                 .flatMap(tuple -> {
                     boolean pertenece = tuple.getT1() || tuple.getT2();
+                    System.out.println("¿Pertenece?: " + pertenece);
+
                     if (!pertenece) {
                         return Mono.error(new RuntimeException("El producto no pertenece al cliente"));
                     }
 
-                    return movimientos.collectList() // Convierte el Flux en una lista
+                    return transactionRepository.findByProductId(productId)
+                            .doOnSubscribe(s -> System.out.println("Suscribiéndose a movimientos"))
+                            .doOnNext(tx -> System.out.println("Movimiento encontrado: " + tx))
+                            .doOnComplete(() -> System.out.println("Todos los movimientos fueron emitidos"))
+                            .collectList()
                             .map(transactionList -> {
                                 Map<String, Object> result = new HashMap<>();
                                 result.put("productId", productId);
-                                result.put("movements", transactionList); // Movimientos convertidos en lista
+                                result.put("movements", transactionList);
                                 return result;
                             });
                 });
+
     }
+
 }
