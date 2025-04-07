@@ -9,6 +9,8 @@ import org.springframework.web.bind.annotation.*;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
+import java.util.Map;
+
 @RestController
 @RequestMapping("/api/v1/transaction")
 @RequiredArgsConstructor
@@ -36,6 +38,11 @@ public class TransactionController {
         return transactionService.create(transaction)
                 .map(savedTransaction -> ResponseEntity.status(HttpStatus.CREATED).body(savedTransaction))
                 .onErrorResume(e -> Mono.just(ResponseEntity.badRequest().build()));
+    }
+
+    @GetMapping("/customer/{customerId}/product/{productId}")
+    public Mono<Map<String, Object>> findByCustomerId(@PathVariable String customerId, @PathVariable String productId){
+        return transactionService.getProductMovements(customerId, productId);
     }
 
 }
