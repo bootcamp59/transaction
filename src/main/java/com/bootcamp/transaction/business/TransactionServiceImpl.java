@@ -1,15 +1,14 @@
 package com.bootcamp.transaction.business;
 
+import com.bootcamp.transaction.dto.AccountResponseDTO;
 import com.bootcamp.transaction.dto.CreditRequestDTO;
 import com.bootcamp.transaction.enums.TransactionType;
 import com.bootcamp.transaction.model.Transaction;
 import com.bootcamp.transaction.repository.TransactionRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.stereotype.Service;
-import org.springframework.util.ConcurrentReferenceHashMap;
 import org.springframework.web.reactive.function.client.WebClient;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
@@ -41,23 +40,38 @@ public class TransactionServiceImpl {
     public Mono<Transaction> create(Transaction transaction) {
         transaction.setTransactionDate(LocalDateTime.now());
         log.info("Intentando registrar transacion {}", transaction);
-        return transactionRepository.save(transaction)
-            .flatMap(item -> {
-                if(item.getType() == TransactionType.RETIRO ){
-                    item.setAmount(-item.getAmount());
-                }
-                if(item.getType() == TransactionType.CONSUMPTION || item.getType() == TransactionType.PAYMENT){
-                    var request = new CreditRequestDTO();
-                    request.setMonto(transaction.getAmount());
-                    request.setTransactionType(transaction.getType());
 
-                    return udpateCreditBalance(request, "http://localhost:8087/api/v1/credit/" + transaction.getProductId() + "/transaction")
-                        .flatMap(e -> Mono.just(transaction));
-                }
+        return validar(transaction.getProductId()) // Mono<Account>
+            .flatMap(account ->
+                transactionRepository.findByCustomerId(transaction.getCustomerId()).count()
+                    .flatMap(count -> {
+                        if(count >= account.getMaximoTransacionSinComision()){
+                            log.info("se sobrepaso el limite de transaciones sin comision, se esta añadiendo: "+ account.getCommissionRate());
+                            transaction.setTransactionCommission(transaction.getAmount() * account.getCommissionRate());
+                        }
+                        return transactionRepository.save(transaction)
+                            .flatMap(savedTx -> {
+                                // Ajuste de monto si es retiro
+                                if (transaction.getType() == TransactionType.RETIRO) {
+                                    transaction.setAmount(-transaction.getAmount());
+                                }
+                                if (savedTx.getType() == TransactionType.CONSUMPTION || savedTx.getType() == TransactionType.PAYMENT) {
+                                    var request = new CreditRequestDTO();
+                                    request.setMonto(savedTx.getAmount());
+                                    request.setTransactionType(savedTx.getType());
 
-                return udpateAccountBalance(item)
-                    .flatMap(e -> Mono.just(transaction));
-            });
+                                    return udpateCreditBalance(request,
+                                            "http://localhost:8087/api/v1/credit/" + savedTx.getProductId() + "/transaction")
+                                            .thenReturn(savedTx);
+                                } else {
+                                    return udpateAccountBalance(savedTx)
+                                            .thenReturn(savedTx);
+                                }
+                            });
+                    })
+            );
+
+
     }
 
     public Mono<Void> delete(String id) {
@@ -116,28 +130,39 @@ public class TransactionServiceImpl {
                 .onErrorReturn(false);
 
         return Mono.zip(isCuenta, isCredito)
-                .doOnNext(t -> System.out.println("Resultado de zip: cuenta=" + t.getT1() + ", credito=" + t.getT2()))
-                .flatMap(tuple -> {
-                    boolean pertenece = tuple.getT1() || tuple.getT2();
-                    System.out.println("¿Pertenece?: " + pertenece);
+            .doOnNext(t -> System.out.println("Resultado de zip: cuenta=" + t.getT1() + ", credito=" + t.getT2()))
+            .flatMap(tuple -> {
+                boolean pertenece = tuple.getT1() || tuple.getT2();
+                System.out.println("¿Pertenece?: " + pertenece);
 
-                    if (!pertenece) {
-                        return Mono.error(new RuntimeException("El producto no pertenece al cliente"));
-                    }
+                if (!pertenece) {
+                    return Mono.error(new RuntimeException("El producto no pertenece al cliente"));
+                }
 
-                    return transactionRepository.findByProductId(productId)
-                            .doOnSubscribe(s -> System.out.println("Suscribiéndose a movimientos"))
-                            .doOnNext(tx -> System.out.println("Movimiento encontrado: " + tx))
-                            .doOnComplete(() -> System.out.println("Todos los movimientos fueron emitidos"))
-                            .collectList()
-                            .map(transactionList -> {
-                                Map<String, Object> result = new HashMap<>();
-                                result.put("productId", productId);
-                                result.put("movements", transactionList);
-                                return result;
-                            });
-                });
+                return transactionRepository.findByProductId(productId)
+                        .doOnSubscribe(s -> System.out.println("Suscribiéndose a movimientos"))
+                        .doOnNext(tx -> System.out.println("Movimiento encontrado: " + tx))
+                        .doOnComplete(() -> System.out.println("Todos los movimientos fueron emitidos"))
+                        .collectList()
+                        .map(transactionList -> {
+                            Map<String, Object> result = new HashMap<>();
+                            result.put("productId", productId);
+                            result.put("movements", transactionList);
+                            return result;
+                        });
+            });
+    }
 
+    private Mono<AccountResponseDTO> validar(String cuentaId){
+
+        return webClientBuilder.build()
+            .get()
+            .uri("http://localhost:8086/api/v1/account/"+cuentaId)
+            .accept(MediaType.APPLICATION_JSON)
+            .retrieve()
+            .bodyToMono(AccountResponseDTO.class)
+            .onErrorMap( e -> new RuntimeException("error al actualizar deposito"))
+            .doOnError(o -> System.out.println("solo logging error"));
     }
 
 }

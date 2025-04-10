@@ -38,4 +38,6 @@ public class Transaction {
     @NotBlank(message = "Customer ID is required")
     private String customerId;
 
+    private Double transactionCommission;
+
 }
