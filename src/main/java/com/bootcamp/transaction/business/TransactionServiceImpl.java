@@ -1,19 +1,23 @@
 package com.bootcamp.transaction.business;
 
 import com.bootcamp.transaction.dto.AccountResponseDTO;
+import com.bootcamp.transaction.dto.CommissionReportDTO;
+import com.bootcamp.transaction.dto.CommissionResponseReportDTO;
 import com.bootcamp.transaction.dto.CreditRequestDTO;
 import com.bootcamp.transaction.enums.TransactionType;
 import com.bootcamp.transaction.model.Transaction;
 import com.bootcamp.transaction.repository.TransactionRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.commons.lang3.StringUtils;
 import org.springframework.http.MediaType;
 import org.springframework.stereotype.Service;
 import org.springframework.web.reactive.function.client.WebClient;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
-
 import java.time.LocalDateTime;
+import java.time.ZoneId;
+import java.time.ZoneOffset;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -37,6 +41,21 @@ public class TransactionServiceImpl {
         return transactionRepository.findByCustomerId(customerId);
     }
 
+    public Flux<CommissionResponseReportDTO> getCommissionReport(CommissionReportDTO dto) {
+        ZoneId zone = ZoneId.of("America/Lima");
+
+        LocalDateTime start = dto.getFecInicial().atStartOfDay(zone).withZoneSameInstant(ZoneOffset.UTC).toLocalDateTime();
+        LocalDateTime end = dto.getFecFin().plusDays(1).atStartOfDay(zone).withZoneSameInstant(ZoneOffset.UTC).toLocalDateTime();
+
+        return transactionRepository.findByProductIdAndTransactionDateBetween(dto.getProductId(), start, end)
+                .map( tra -> CommissionResponseReportDTO.builder()
+                        .productId(tra.getProductId())
+                        .transactionDate(tra.getTransactionDate())
+                        .transactionCommission(tra.getTransactionCommission())
+                        .build()
+                );
+    }
+
     public Mono<Transaction> create(Transaction transaction) {
         transaction.setTransactionDate(LocalDateTime.now());
         log.info("Intentando registrar transacion {}", transaction);
@@ -47,7 +66,11 @@ public class TransactionServiceImpl {
                     .flatMap(count -> {
                         if(count >= account.getMaximoTransacionSinComision()){
                             log.info("se sobrepaso el limite de transaciones sin comision, se esta añadiendo: "+ account.getCommissionRate());
-                            transaction.setTransactionCommission(transaction.getAmount() * account.getCommissionRate());
+                            transaction.setTransactionCommission(transaction.getAmount() * (account.getCommissionRate() != null ? account.getCommissionRate() : 0));
+                        }
+                        if(!StringUtils.equalsIgnoreCase(transaction.getOrigen().getName(), transaction.getDestino().getName())){
+                            log.error("Solo se puede hacer tansferencia del mismo banco");
+                            return Mono.error(new RuntimeException("Solo se puede hacer tansferencia del mimo banco"));
                         }
                         return transactionRepository.save(transaction)
                             .flatMap(savedTx -> {
@@ -153,15 +176,15 @@ public class TransactionServiceImpl {
             });
     }
 
-    private Mono<AccountResponseDTO> validar(String cuentaId){
+    private Mono<AccountResponseDTO> validar(String accountNumber){
 
         return webClientBuilder.build()
             .get()
-            .uri("http://localhost:8086/api/v1/account/"+cuentaId)
+            .uri("http://localhost:8086/api/v1/account/account-number/"+accountNumber)
             .accept(MediaType.APPLICATION_JSON)
             .retrieve()
             .bodyToMono(AccountResponseDTO.class)
-            .onErrorMap( e -> new RuntimeException("error al actualizar deposito"))
+            .onErrorMap( e -> new RuntimeException("error al obtener cuenta por medio del nrocuenta"))
             .doOnError(o -> System.out.println("solo logging error"));
     }
 

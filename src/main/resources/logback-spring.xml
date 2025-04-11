@@ -1,0 +1,15 @@
+<configuration>
+
+    <appender name="console" class="ch.qos.logback.core.ConsoleAppender">
+        <encoder>
+            <pattern>%d{yyyy-MM-dd HH:mm:ss.SSS} %-5level [traceId=%X{traceId}] %-42.42logger{42} : %msg%n</pattern>
+        </encoder>
+    </appender>
+
+    <logger level="OFF" name="com.tdp.genesis.audit.decorator.AuditServerHttpResponseDecorator"/>
+
+    <root level="info">
+        <appender-ref ref="console"/>
+    </root>
+
+</configuration>

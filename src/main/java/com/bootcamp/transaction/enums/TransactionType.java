@@ -4,5 +4,5 @@ import lombok.Getter;
 
 @Getter
 public enum TransactionType {
-    DEPOSIT, RETIRO, PAYMENT, CONSUMPTION
+    DEPOSIT, RETIRO, PAYMENT, CONSUMPTION, TRANSFER
 }

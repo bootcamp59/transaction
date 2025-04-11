@@ -22,8 +22,11 @@ public class Transaction {
     @Id
     private String id;
 
-    @NotBlank(message = "Product ID is required")
+
     private String productId;
+
+    private AccountBank origen;
+    private AccountBank destino;
 
     @NotNull(message = "Transaction type is required")
     private TransactionType type;

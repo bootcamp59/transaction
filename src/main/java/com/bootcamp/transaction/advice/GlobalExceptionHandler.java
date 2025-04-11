@@ -11,7 +11,7 @@ import java.time.LocalDateTime;
 
 @RestControllerAdvice
 public class GlobalExceptionHandler {
-    @ExceptionHandler(IllegalArgumentException.class)
+    @ExceptionHandler(RuntimeException.class)
     public ResponseEntity<AccountErrorResponse> handleIllegalArgument(IllegalArgumentException ex, WebRequest request) {
         AccountErrorResponse errorResponse = AccountErrorResponse.builder()
                 .timestamp(LocalDateTime.now())
