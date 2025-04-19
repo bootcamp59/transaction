@@ -1,9 +1,6 @@
 package com.bootcamp.transaction.business;
 
-import com.bootcamp.transaction.dto.AccountResponseDTO;
-import com.bootcamp.transaction.dto.CommissionReportDTO;
-import com.bootcamp.transaction.dto.CommissionResponseReportDTO;
-import com.bootcamp.transaction.dto.CreditRequestDTO;
+import com.bootcamp.transaction.dto.*;
 import com.bootcamp.transaction.model.Transaction;
 import com.bootcamp.transaction.repository.TransactionRepository;
 import lombok.RequiredArgsConstructor;
@@ -14,9 +11,12 @@ import org.springframework.web.reactive.function.client.WebClient;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
+import java.math.BigDecimal;
 import java.time.*;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 @Slf4j
 @Service
@@ -117,22 +117,6 @@ public class TransactionServiceImpl {
         return transactionRepository.deleteById(id);
     }
 
-
-
-    private Mono<Object> udpateCreditBalance(CreditRequestDTO bodyValue, String url){
-
-        return webClientBuilder.build()
-                .post()
-                .uri(url)
-                .accept(MediaType.APPLICATION_JSON)
-                .bodyValue(bodyValue)
-                .retrieve()
-                .bodyToMono(Object.class)
-                .onErrorMap( e -> new RuntimeException("error al actualizar deposito"))
-                .doOnError(o -> System.out.println("solo logging error"));
-
-    }
-
     public Flux<Transaction> getMovements(String document, String productId){
         return transactionRepository.findByDestinoProductoId(productId);
     }
@@ -184,11 +168,44 @@ public class TransactionServiceImpl {
             });
     }
 
+    public Mono<List<ProductCommissionReportDto>> generateCommissionReport(LocalDateTime startDate, LocalDateTime endDate) {
+        // Obtener las transacciones en el rango de fechas
+        return transactionRepository.findByTransactionDateBetween(startDate, endDate)
+                .collectList()
+                .map(as -> {
+                    return as;
+                })
+                .map(transactions ->
+                        transactions.stream()
+                                .collect(Collectors.groupingBy(el -> el.getDestino().getProductoId()))  // Agrupar por productoId
+                                .entrySet().stream()
+                                .map(entry -> {
+                                    String productoId = entry.getKey();
+                                    List<Transaction> productTransactions = entry.getValue();
+
+                                    // Calcular la comisión total para el producto
+                                    BigDecimal totalCommission = productTransactions.stream()
+                                            .filter(t -> t.getTransactionCommission() != null)
+                                            .map(Transaction::getTransactionCommission)
+                                            .map(BigDecimal::valueOf)
+                                            .reduce(BigDecimal.ZERO, BigDecimal::add);
+
+                                    // Crear el reporte por producto
+                                    ProductCommissionReportDto reportDto = new ProductCommissionReportDto();
+                                    reportDto.setProductoId(productoId);
+                                    reportDto.setProductoType(productTransactions.get(0).getType().name()); // Se asume que todos los productos del mismo ID tienen el mismo tipo
+                                    reportDto.setTotalCommission(totalCommission);
+                                    return reportDto;
+                                })
+                                .collect(Collectors.toList())  // Generar lista de reportes
+                );
+    }
+
     private Mono<AccountResponseDTO> validar(String accountNumber){
 
         return webClientBuilder.build()
             .get()
-            .uri("http://localhost:8086/api/v1/account/account-number/"+accountNumber)
+            .uri("http://localhost:8086/api/v1/acFcount/account-number/"+accountNumber)
             .accept(MediaType.APPLICATION_JSON)
             .retrieve()
             .bodyToMono(AccountResponseDTO.class)

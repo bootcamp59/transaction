@@ -3,6 +3,8 @@ package com.bootcamp.transaction.controller;
 import com.bootcamp.transaction.business.TransactionServiceImpl;
 import com.bootcamp.transaction.dto.CommissionReportDTO;
 import com.bootcamp.transaction.dto.CommissionResponseReportDTO;
+import com.bootcamp.transaction.dto.ProductCommissionReportDto;
+import com.bootcamp.transaction.dto.ReporteCommisionRequest;
 import com.bootcamp.transaction.model.Transaction;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
@@ -11,6 +13,7 @@ import org.springframework.web.bind.annotation.*;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
+import java.util.List;
 import java.util.Map;
 
 @RestController
@@ -38,6 +41,12 @@ public class TransactionController {
     @PostMapping("/report")
     public Flux<CommissionResponseReportDTO> reportByProductoId(@RequestBody CommissionReportDTO dto){
         return transactionService.getCommissionReport(dto);
+    }
+
+    //este es el verdadero
+    @PostMapping("/report-commission")
+    public Mono<List<ProductCommissionReportDto>> reportCommission(@RequestBody ReporteCommisionRequest dto){
+        return transactionService.generateCommissionReport(dto.getStartDate(), dto.getEndDate());
     }
 
     @PostMapping

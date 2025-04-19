@@ -15,5 +15,6 @@ public interface TransactionRepository extends ReactiveMongoRepository<Transacti
     Flux<Transaction> findByOrigenDocument(String customerId);
     Flux<Transaction> findByOrigenProductoIdAndTransactionDateBetween(String productId, LocalDateTime start, LocalDateTime end);
     Flux<Transaction> findByDestinoProductoIdAndTransactionDateBetween(String productId, LocalDateTime start, LocalDateTime end);
+    Flux<Transaction> findByTransactionDateBetween(LocalDateTime startDate, LocalDateTime endDate);
 
 }
