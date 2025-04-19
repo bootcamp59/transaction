@@ -4,12 +4,10 @@ import com.bootcamp.transaction.dto.AccountResponseDTO;
 import com.bootcamp.transaction.dto.CommissionReportDTO;
 import com.bootcamp.transaction.dto.CommissionResponseReportDTO;
 import com.bootcamp.transaction.dto.CreditRequestDTO;
-import com.bootcamp.transaction.enums.TransactionType;
 import com.bootcamp.transaction.model.Transaction;
 import com.bootcamp.transaction.repository.TransactionRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.apache.commons.lang3.StringUtils;
 import org.springframework.http.MediaType;
 import org.springframework.stereotype.Service;
 import org.springframework.web.reactive.function.client.WebClient;
@@ -34,11 +32,11 @@ public class TransactionServiceImpl {
     }
 
     public Flux<Transaction> findByProductId(String productId) {
-        return transactionRepository.findByProductId(productId);
+        return transactionRepository.findByOrigenProductoId(productId);
     }
 
     public Flux<Transaction> findByCustomerId(String customerId) {
-        return transactionRepository.findByCustomerId(customerId);
+        return transactionRepository.findByOrigenDocument(customerId);
     }
 
     public Flux<CommissionResponseReportDTO> getCommissionReport(CommissionReportDTO dto) {
@@ -47,9 +45,9 @@ public class TransactionServiceImpl {
         LocalDateTime start = dto.getFecInicial().atStartOfDay(zone).withZoneSameInstant(ZoneOffset.UTC).toLocalDateTime();
         LocalDateTime end = dto.getFecFin().plusDays(1).atStartOfDay(zone).withZoneSameInstant(ZoneOffset.UTC).toLocalDateTime();
 
-        return transactionRepository.findByProductIdAndTransactionDateBetween(dto.getProductId(), start, end)
+        return transactionRepository.findByOrigenProductoIdAndTransactionDateBetween(dto.getProductId(), start, end)
                 .map( tra -> CommissionResponseReportDTO.builder()
-                        .productId(tra.getProductId())
+                        .productId(tra.getOrigen().getProductoId())
                         .transactionDate(tra.getTransactionDate())
                         .transactionCommission(tra.getTransactionCommission())
                         .build()
@@ -60,7 +58,9 @@ public class TransactionServiceImpl {
         transaction.setTransactionDate(LocalDateTime.now());
         log.info("Intentando registrar transacion {}", transaction);
 
-        return validar(transaction.getProductId()) // Mono<Account>
+        return transactionRepository.save(transaction);
+
+        /*return validar(transaction.getProductId()) // Mono<Account>
             .flatMap(account ->
                 transactionRepository.findByCustomerId(transaction.getCustomerId()).count()
                     .flatMap(count -> {
@@ -94,6 +94,8 @@ public class TransactionServiceImpl {
                     })
             );
 
+         */
+
 
     }
 
@@ -101,19 +103,7 @@ public class TransactionServiceImpl {
         return transactionRepository.deleteById(id);
     }
 
-    private Mono<Object> udpateAccountBalance(Transaction transaction){
 
-        return webClientBuilder.build()
-            .put()
-            .uri("http://localhost:8086/api/v1/account/"+ transaction.getProductId())
-            .accept(MediaType.APPLICATION_JSON)
-            .bodyValue(Map.of("balance", transaction.getAmount()))
-            .retrieve()
-            .bodyToMono(Object.class)
-            .onErrorMap( e -> new RuntimeException("error al actualizar deposito"))
-            .doOnError(o -> System.out.println("solo logging error"));
-
-    }
 
     private Mono<Object> udpateCreditBalance(CreditRequestDTO bodyValue, String url){
 
@@ -127,6 +117,10 @@ public class TransactionServiceImpl {
                 .onErrorMap( e -> new RuntimeException("error al actualizar deposito"))
                 .doOnError(o -> System.out.println("solo logging error"));
 
+    }
+
+    public Flux<Transaction> getMovements(String document, String productId){
+        return transactionRepository.findByDestinoProductoId(productId);
     }
 
     public Mono<Map<String, Object>> getProductMovements(String customerId, String productId) {
@@ -162,7 +156,7 @@ public class TransactionServiceImpl {
                     return Mono.error(new RuntimeException("El producto no pertenece al cliente"));
                 }
 
-                return transactionRepository.findByProductId(productId)
+                return transactionRepository.findByOrigenProductoId(productId)
                         .doOnSubscribe(s -> System.out.println("Suscribiéndose a movimientos"))
                         .doOnNext(tx -> System.out.println("Movimiento encontrado: " + tx))
                         .doOnComplete(() -> System.out.println("Todos los movimientos fueron emitidos"))

@@ -51,4 +51,9 @@ public class TransactionController {
         return transactionService.getProductMovements(customerId, productId);
     }
 
+    @GetMapping("/customer/{customerId}/product/{productId}/v2")
+    public Flux<Transaction> findByProductIdAndCustomer2(@PathVariable String customerId, @PathVariable String productId) {
+        return transactionService.getMovements(customerId, productId);
+    }
+
 }

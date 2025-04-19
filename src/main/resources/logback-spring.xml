@@ -1,3 +1,4 @@
+<?xml version="1.0" encoding="UTF-8"?>
 <configuration>
 
     <appender name="console" class="ch.qos.logback.core.ConsoleAppender">
@@ -6,7 +7,6 @@
         </encoder>
     </appender>
 
-    <logger level="OFF" name="com.tdp.genesis.audit.decorator.AuditServerHttpResponseDecorator"/>
 
     <root level="info">
         <appender-ref ref="console"/>

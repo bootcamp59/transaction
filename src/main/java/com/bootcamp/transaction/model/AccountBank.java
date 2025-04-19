@@ -13,6 +13,11 @@ import lombok.Setter;
 @AllArgsConstructor
 @NoArgsConstructor
 public class AccountBank {
-    private String nroCuenta;
-    private String name;
+    private String productoId;
+    private String document;
+    private String banco;
+    private String type;
+
+
+
 }

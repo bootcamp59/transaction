@@ -21,14 +21,10 @@ import java.time.LocalDateTime;
 public class Transaction {
     @Id
     private String id;
-
-
-    private String productId;
-
     private AccountBank origen;
     private AccountBank destino;
 
-    @NotNull(message = "Transaction type is required")
+
     private TransactionType type;
 
     @NotNull(message = "Amount is required")
@@ -37,9 +33,6 @@ public class Transaction {
 
     private String description;
     private LocalDateTime transactionDate;
-
-    @NotBlank(message = "Customer ID is required")
-    private String customerId;
 
     private Double transactionCommission;
 

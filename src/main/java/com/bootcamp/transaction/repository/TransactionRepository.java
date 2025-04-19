@@ -10,8 +10,9 @@ import java.time.LocalDateTime;
 @Repository
 public interface TransactionRepository extends ReactiveMongoRepository<Transaction, String> {
 
-    Flux<Transaction> findByProductId(String productId);
-    Flux<Transaction> findByCustomerId(String customerId);
-    Flux<Transaction> findByProductIdAndTransactionDateBetween(String productId, LocalDateTime start, LocalDateTime end);
+    Flux<Transaction> findByOrigenProductoId(String productId);
+    Flux<Transaction> findByDestinoProductoId(String productId);
+    Flux<Transaction> findByOrigenDocument(String customerId);
+    Flux<Transaction> findByOrigenProductoIdAndTransactionDateBetween(String productId, LocalDateTime start, LocalDateTime end);
 
 }
