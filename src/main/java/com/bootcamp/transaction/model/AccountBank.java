@@ -17,6 +17,8 @@ public class AccountBank {
     private String document;
     private String banco;
     private String type;
+    private double transaccionesSinComision;
+
 
 
 

@@ -13,9 +13,8 @@ import org.springframework.stereotype.Service;
 import org.springframework.web.reactive.function.client.WebClient;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
-import java.time.LocalDateTime;
-import java.time.ZoneId;
-import java.time.ZoneOffset;
+
+import java.time.*;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -58,7 +57,22 @@ public class TransactionServiceImpl {
         transaction.setTransactionDate(LocalDateTime.now());
         log.info("Intentando registrar transacion {}", transaction);
 
-        return transactionRepository.save(transaction);
+        // Fecha actual
+        LocalDate today = LocalDate.now();
+        LocalDateTime startOfMonth = today.withDayOfMonth(1).atStartOfDay();
+        LocalDateTime endOfMonth = today.withDayOfMonth(YearMonth.from(today).lengthOfMonth())
+                .atTime(LocalTime.MAX);
+
+        return transactionRepository.findByDestinoProductoIdAndTransactionDateBetween(transaction.getDestino().getProductoId(), startOfMonth, endOfMonth)
+                .count()
+                .flatMap(count -> {
+                    if(count < transaction.getDestino().getTransaccionesSinComision()){
+                        transaction.setTransactionCommission(0d);
+                    }
+                    return transactionRepository.save(transaction);
+                });
+
+
 
         /*return validar(transaction.getProductId()) // Mono<Account>
             .flatMap(account ->

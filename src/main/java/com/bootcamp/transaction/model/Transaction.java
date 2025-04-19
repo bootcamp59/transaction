@@ -33,7 +33,7 @@ public class Transaction {
 
     private String description;
     private LocalDateTime transactionDate;
-
     private Double transactionCommission;
+
 
 }
