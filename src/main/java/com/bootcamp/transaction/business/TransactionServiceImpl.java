@@ -5,6 +5,11 @@ import com.bootcamp.transaction.model.Transaction;
 import com.bootcamp.transaction.repository.TransactionRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.domain.Sort;
+import org.springframework.data.mongodb.core.ReactiveMongoTemplate;
+import org.springframework.data.mongodb.core.aggregation.Aggregation;
+import org.springframework.data.mongodb.core.query.Criteria;
+import org.springframework.data.mongodb.core.query.Query;
 import org.springframework.http.MediaType;
 import org.springframework.stereotype.Service;
 import org.springframework.web.reactive.function.client.WebClient;
@@ -25,6 +30,7 @@ public class TransactionServiceImpl {
 
     private final TransactionRepository transactionRepository;
     private final WebClient.Builder webClientBuilder;
+    private final ReactiveMongoTemplate mongoTemplate;
 
     public Flux<Transaction> findAll() {
         return transactionRepository.findAll();
@@ -200,6 +206,42 @@ public class TransactionServiceImpl {
                                 .collect(Collectors.toList())  // Generar lista de reportes
                 );
     }
+
+    public Flux<ReportItem> generateGeneralProductReport(LocalDateTime startDate, LocalDateTime endDate) {
+        Aggregation agg = Aggregation.newAggregation(
+                Aggregation.match(Criteria.where("transactionDate")
+                        .gte(startDate).lte(endDate)),
+                Aggregation.group("destino.productoId", "destino.type", "destino.banco")
+                        .count().as("totalTransactions")
+                        .sum("amount").as("totalAmount"),
+                Aggregation.project("totalTransactions", "totalAmount")
+                        .and("_id.productoId").as("productoId")
+                        .and("_id.type").as("productType")
+                        .and("_id.banco").as("banco")
+        );
+
+        return mongoTemplate.aggregate(agg, "transaction", ReportItem.class);
+    }
+
+    public Flux<Transaction> findLast10MovementsByCardNumber(ProductCommissionReportDto request){
+        Criteria criteria = new Criteria();
+        if(request.getProductoType().equals("CREDIT_CARD")){
+            criteria.orOperator(
+                Criteria.where("destino.productoId").is(request.getProductoId())
+            );
+        } else {
+            criteria.orOperator(
+                    Criteria.where("origen.cardNumber").is(request.getProductoId())
+            );
+        }
+
+        Query query = new Query(criteria);
+        query.with(Sort.by(Sort.Direction.DESC, "transactionDate"));
+        query.limit(10);
+
+        return mongoTemplate.find(query, Transaction.class);
+    }
+
 
     private Mono<AccountResponseDTO> validar(String accountNumber){
 

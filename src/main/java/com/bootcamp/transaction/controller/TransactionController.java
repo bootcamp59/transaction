@@ -1,10 +1,7 @@
 package com.bootcamp.transaction.controller;
 
 import com.bootcamp.transaction.business.TransactionServiceImpl;
-import com.bootcamp.transaction.dto.CommissionReportDTO;
-import com.bootcamp.transaction.dto.CommissionResponseReportDTO;
-import com.bootcamp.transaction.dto.ProductCommissionReportDto;
-import com.bootcamp.transaction.dto.ReporteCommisionRequest;
+import com.bootcamp.transaction.dto.*;
 import com.bootcamp.transaction.model.Transaction;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
@@ -45,7 +42,7 @@ public class TransactionController {
 
     //este es el verdadero
     @PostMapping("/report-commission")
-    public Mono<List<ProductCommissionReportDto>> reportCommission(@RequestBody ReporteCommisionRequest dto){
+    public Mono<List<ProductCommissionReportDto>> reportCommission(@RequestBody ReportRequest dto){
         return transactionService.generateCommissionReport(dto.getStartDate(), dto.getEndDate());
     }
 
@@ -64,5 +61,16 @@ public class TransactionController {
     public Flux<Transaction> findByProductIdAndCustomer2(@PathVariable String customerId, @PathVariable String productId) {
         return transactionService.getMovements(customerId, productId);
     }
+
+    @PostMapping("/report-general-product")
+    public Flux<ReportItem> generateGeneralProductReport(@RequestBody ReportRequest dto){
+        return transactionService.generateGeneralProductReport(dto.getStartDate(), dto.getEndDate());
+    }
+
+    @PostMapping("/product/last10movements")
+    public Flux<Transaction> findLast10MovementsByCardNumber(@RequestBody ProductCommissionReportDto request){
+        return transactionService.findLast10MovementsByCardNumber(request);
+    }
+
 
 }

@@ -11,7 +11,7 @@ import java.time.LocalDateTime;
 @Setter
 @AllArgsConstructor
 @NoArgsConstructor
-public class ReporteCommisionRequest {
+public class ReportRequest {
     private LocalDateTime startDate;
     private LocalDateTime endDate;
 }

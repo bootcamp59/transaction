@@ -14,12 +14,10 @@ import lombok.Setter;
 @NoArgsConstructor
 public class AccountBank {
     private String productoId;
+    private String cardNumber;
     private String document;
     private String banco;
     private String type;
     private double transaccionesSinComision;
-
-
-
 
 }
