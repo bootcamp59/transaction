@@ -129,8 +129,8 @@ public class TransactionServiceImpl {
 
     public Mono<Map<String, Object>> getProductMovements(String customerId, String productId) {
         log.info("buscando movimientos del cliente {} con el producto {}",  customerId, productId);
-        var urlAccount = "http://localhost:8086/api/v1/account/" + productId + "/customer/" + customerId;
-        var urlCredit = "http://localhost:8087/api/v1/credit/" + productId + "/customer/" + customerId;
+        var urlAccount = "http://ACCOUNT/api/v1/account/" + productId + "/customer/" + customerId;
+        var urlCredit = "http://CREDIT/api/v1/credit/" + productId + "/customer/" + customerId;
 
         log.info("peticion hacia {}", urlAccount);
         Mono<Boolean> isCuenta = webClientBuilder.build()
@@ -247,7 +247,7 @@ public class TransactionServiceImpl {
 
         return webClientBuilder.build()
             .get()
-            .uri("http://localhost:8086/api/v1/acFcount/account-number/"+accountNumber)
+            .uri("http://ACCOUNT/api/v1/acFcount/account-number/"+accountNumber)
             .accept(MediaType.APPLICATION_JSON)
             .retrieve()
             .bodyToMono(AccountResponseDTO.class)
